@@ -42,8 +42,11 @@ def main(modo: str):
         es_alerta = True
         asunto = f"🛒 Nuevas promos supermercados/combustible — {datetime.now().strftime('%d/%m/%Y')}"
 
-    html = construir_html(a_mostrar, es_alerta=es_alerta)
-    enviar_mail(asunto, html)
+    try:
+        html = construir_html(a_mostrar, es_alerta=es_alerta)
+        enviar_mail(asunto, html)
+    except Exception as e:
+        print(f"[WARN] no se pudo enviar el mail (¿faltan los secrets de SMTP?): {e}")
 
     guardar_vistos(vistos_actualizado)
     print("  listo")
