@@ -1,0 +1,65 @@
+name: Monitor Promos Bancarias
+
+on:
+  schedule:
+    # Lunes 07:00 AM ART (10:00 UTC) -> resumen semanal completo
+    - cron: "0 10 * * 1"
+    # Todos los días 08:00 AM ART (11:00 UTC) -> alerta de promos nuevas
+    - cron: "0 11 * * *"
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "semanal o alerta"
+        required: false
+        default: "alerta"
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Restaurar cache de promos vistas
+        uses: actions/cache@v4
+        with:
+          path: seen_promos.json
+          key: seen-promos-${{ github.run_id }}
+          restore-keys: |
+            seen-promos-
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Determinar modo
+        id: modo
+        run: |
+          if [ "${{ github.event.schedule }}" = "0 10 * * 1" ]; then
+            echo "modo=semanal" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ github.event.inputs.modo }}" ]; then
+            echo "modo=${{ github.event.inputs.modo }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "modo=alerta" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Correr monitor
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        run: python monitor.py --modo ${{ steps.modo.outputs.modo }}
+
+      - name: Guardar cache de promos vistas
+        if: always()
+        uses: actions/cache@v4
+        with:
+          path: seen_promos.json
+          key: seen-promos-${{ github.run_id }}
