@@ -1,19 +1,28 @@
-"""Normaliza las promos de cada banco a un esquema único para dedup/resumen/mail."""
+"""Normaliza las promos de supermercados/combustible de cada banco a un esquema único."""
 from dataclasses import dataclass
 
 import scraper_bbva
 import scraper_galicia
 import scraper_mercadopago
 
+DIAS_ORDEN = [
+    "Lunes", "Martes", "Miércoles", "Jueves", "Viernes",
+    "Sábado", "Sábados", "Domingo", "Domingos",
+    "Sábados y Domingos", "Fines de semana", "Todos los días",
+]
+
 
 @dataclass
 class PromoUnificada:
     id: str  # único global: "<banco>:<id original>"
     banco: str
-    titulo: str
-    descripcion: str
+    categoria: str
+    comercio: str
+    dias: str
+    descuento: str
+    medio_pago: str
+    tope: str
     vigencia: str
-    link: str
 
 
 def _de_galicia() -> list[PromoUnificada]:
@@ -21,10 +30,13 @@ def _de_galicia() -> list[PromoUnificada]:
         PromoUnificada(
             id=f"galicia:{p.id}",
             banco="Galicia",
-            titulo=p.titulo,
-            descripcion=p.promocion,
-            vigencia=f"hasta {p.vigencia_hasta[:10]}" if p.vigencia_hasta else p.dias,
-            link="",
+            categoria=p.categoria,
+            comercio=p.comercio,
+            dias=p.dias,
+            descuento=p.descuento,
+            medio_pago=p.medio_pago,
+            tope="",
+            vigencia=p.vigencia_hasta,
         )
         for p in scraper_galicia.obtener_promos()
     ]
@@ -35,10 +47,13 @@ def _de_bbva() -> list[PromoUnificada]:
         PromoUnificada(
             id=f"bbva:{p.id}",
             banco="BBVA",
-            titulo=p.titulo,
-            descripcion=p.descripcion,
-            vigencia=f"{p.fecha_desde} a {p.fecha_hasta}",
-            link="",
+            categoria=p.categoria,
+            comercio=p.comercio,
+            dias=p.dias,
+            descuento=p.descuento,
+            medio_pago=p.medio_pago,
+            tope=p.tope,
+            vigencia=p.vigencia_hasta,
         )
         for p in scraper_bbva.obtener_promos()
     ]
@@ -49,10 +64,13 @@ def _de_mercadopago() -> list[PromoUnificada]:
         PromoUnificada(
             id=f"mercadopago:{p.id}",
             banco="Mercado Pago",
-            titulo=p.marca,
-            descripcion=f"{p.badges} — {p.descripcion}",
-            vigencia=p.vigencia,
-            link=p.link,
+            categoria=p.categoria,
+            comercio=p.comercio,
+            dias=p.dias,
+            descuento=p.descuento,
+            medio_pago=p.medio_pago,
+            tope="",
+            vigencia="",
         )
         for p in scraper_mercadopago.obtener_promos()
     ]
@@ -66,6 +84,13 @@ def obtener_todas_las_promos() -> list[PromoUnificada]:
         except Exception as e:
             print(f"[WARN] fallo scrapeando {banco}: {e}")
     return promos
+
+
+def orden_dia(dias: str) -> int:
+    for i, d in enumerate(DIAS_ORDEN):
+        if d.lower() in dias.lower():
+            return i
+    return len(DIAS_ORDEN)
 
 
 if __name__ == "__main__":
