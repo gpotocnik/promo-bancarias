@@ -1,9 +1,4 @@
-"""Arma el mail HTML (tabla por día) y lo envía por SMTP, mismo patrón que monitor-parques."""
-import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-
+"""Arma la tabla HTML de promos, agrupada por día y con destacado opcional de novedades."""
 from unify import orden_dia
 
 BANCO_COLOR = {
@@ -18,7 +13,8 @@ def _pct(descuento: str) -> int:
     return int(digitos) if digitos else 0
 
 
-def construir_tabla(promos: list) -> str:
+def construir_tabla(promos: list, destacadas_ids: set = None) -> str:
+    destacadas_ids = destacadas_ids or set()
     ordenadas = sorted(promos, key=lambda p: (orden_dia(p.dias), -_pct(p.descuento), p.banco))
 
     filas = []
@@ -32,9 +28,12 @@ def construir_tabla(promos: list) -> str:
             dia_anterior = p.dias
         color = BANCO_COLOR.get(p.banco, "#666")
         tope = f" (tope {p.tope})" if p.tope else ""
+        es_nueva = p.id in destacadas_ids
+        fondo = "background:#fff8e1;" if es_nueva else ""
+        badge = ' <span title="Nueva esta semana">🆕</span>' if es_nueva else ""
         filas.append(
-            "<tr>"
-            f'<td style="padding:6px;border-bottom:1px solid #eee;"><b>{p.comercio}</b></td>'
+            f'<tr style="{fondo}">'
+            f'<td style="padding:6px;border-bottom:1px solid #eee;"><b>{p.comercio}</b>{badge}</td>'
             f'<td style="padding:6px;border-bottom:1px solid #eee;">{p.descuento}{tope}</td>'
             f'<td style="padding:6px;border-bottom:1px solid #eee;">{p.medio_pago}</td>'
             f'<td style="padding:6px;border-bottom:1px solid #eee;color:{color};font-weight:bold;">{p.banco}</td>'
@@ -50,41 +49,3 @@ def construir_tabla(promos: list) -> str:
         '<th style="text-align:left;padding:6px;border-bottom:2px solid #333;">Banco</th>'
         "</tr></thead><tbody>" + "".join(filas) + "</tbody></table>"
     )
-
-
-def construir_html(promos: list, es_alerta: bool = False) -> str:
-    intro = (
-        "<p>Promociones nuevas de supermercados/combustible detectadas hoy:</p>"
-        if es_alerta
-        else "<p>Resumen semanal — dónde conviene comprar según el día y con qué medio de pago:</p>"
-    )
-
-    return f"""
-    <html><body style="font-family: sans-serif;">
-        <h2>🛒 Promos de supermercados y combustible</h2>
-        {intro}
-        {construir_tabla(promos)}
-        <hr>
-        <p style="font-size:12px;color:#666;">Generado automáticamente. Verificá vigencia y tope antes de comprar.</p>
-    </body></html>
-    """
-
-
-def enviar_mail(asunto: str, html: str):
-    remitente = os.environ["EMAIL_FROM"]
-    destinatario = os.environ["EMAIL_TO"]
-    password = os.environ["EMAIL_PASSWORD"]
-    smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = asunto
-    msg["From"] = remitente
-    msg["To"] = destinatario
-    msg.attach(MIMEText(html, "html"))
-
-    with smtplib.SMTP(smtp_host, smtp_port) as s:
-        s.starttls()
-        s.login(remitente, password)
-        s.sendmail(remitente, destinatario, msg.as_string())
-    print(f"  ✉️  {asunto}")

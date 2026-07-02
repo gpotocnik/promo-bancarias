@@ -2,16 +2,9 @@ name: Monitor Promos Bancarias
 
 on:
   schedule:
-    # Lunes 07:00 AM ART (10:00 UTC) -> resumen semanal completo
-    - cron: "0 10 * * 1"
-    # Todos los días 08:00 AM ART (11:00 UTC) -> alerta de promos nuevas
+    # Todos los días 08:00 AM ART (11:00 UTC)
     - cron: "0 11 * * *"
   workflow_dispatch:
-    inputs:
-      modo:
-        description: "semanal o alerta"
-        required: false
-        default: "alerta"
 
 permissions:
   contents: read
@@ -39,25 +32,8 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
-      - name: Determinar modo
-        id: modo
-        run: |
-          if [ "${{ github.event.schedule }}" = "0 10 * * 1" ]; then
-            echo "modo=semanal" >> "$GITHUB_OUTPUT"
-          elif [ -n "${{ github.event.inputs.modo }}" ]; then
-            echo "modo=${{ github.event.inputs.modo }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "modo=alerta" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Correr monitor
-        env:
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO: ${{ secrets.EMAIL_TO }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-        run: python monitor.py --modo ${{ steps.modo.outputs.modo }}
+        run: python monitor.py
 
       - name: Guardar cache de promos vistas
         if: always()

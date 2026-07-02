@@ -1,49 +1,40 @@
 # 🛒 Monitor de Promociones de Supermercados y Combustible
 
-Scrapea las promociones de **supermercados** (y combustible, si aparecen) de **Banco Galicia**, **BBVA** y **Mercado Pago**, y manda un mail semanal (lunes AM) + alertas diarias cuando aparece una promo nueva. El mail es una tabla ordenada por día de la semana con comercio, descuento, medio de pago y banco — pensada para decidir dónde conviene comprar cada día.
+Página web que muestra las promociones de **supermercados** (y combustible, si aparecen) de **Banco Galicia**, **BBVA** y **Mercado Pago**, actualizada automáticamente todos los días.
 
-No usa Claude API: los datos ya vienen estructurados (día/comercio/%/medio de pago) directo de las fuentes, así que armar la tabla es directo — pasar eso por un LLM solo arriesgaría que reescriba mal un número o un porcentaje.
+**Página en vivo:** https://gpotocnik.github.io/promo-bancarias/
+
+No manda mail — corrió esa versión pero se descartó a favor de una página siempre disponible.
+
+## Qué muestra
+
+- **Día de la semana actual**, arriba de todo.
+- **Novedades de la semana**: promos que aparecieron desde la última corrida (🆕 en la tabla).
+- **Mejor opción de hoy**:
+  - Supermercado: la promo con mayor % de descuento entre las vigentes hoy.
+  - Combustible: precio efectivo real (precio oficial de la Secretaría de Energía × descuento del banco) — hoy no hay ninguna promo de combustible activa en los 3 bancos, así que esta sección queda vacía hasta que aparezca una.
+- **Tabla completa** de la semana, agrupada por día, con comercio/descuento/medio de pago/banco.
+
+## Por qué no hay "mejor opción" con precio real en supermercados
+
+Para combustible existe un dataset oficial y en vivo (Secretaría de Energía, Resolución 314/2016 — `datos.gob.ar`) con precio real por marca, actualizado por las propias estaciones dentro de las 8hs de cualquier cambio. Para supermercados no hay un equivalente liviano: la única fuente pública es **Precios Claros** (preciosclaros.gob.ar), que expone precio por producto individual por sucursal (no un promedio por cadena) a través de una API no documentada — los scrapers comunitarios que existen tardan horas en levantar el catálogo completo. Por eso el ranking de supermercados usa % de descuento, no precio real; si en algún momento se quiere hacer el cálculo real, habría que definir una canasta de productos representativa y armar ese scraper aparte.
+
+No usa Claude API: los datos ya vienen estructurados (día/comercio/%/medio de pago) directo de las fuentes.
 
 Ninguno de los tres bancos necesita un browser real en producción: los tres tienen HTML server-rendered o una API JSON pública detrás del sitio (ver detalle en cada `scraper_*.py`). Playwright está en `requirements.txt` solo como herramienta de diagnóstico para investigar nuevas fuentes, no lo usa el pipeline.
 
-**Estado de combustible/estaciones de servicio (relevado 2026-07):** Galicia y BBVA no tienen esa categoría activa ahora mismo (se revisó su catálogo completo de promos, ninguna es de combustible). Mercado Pago sí ofreció combustible en el pasado vía su fuente editorial, pero no hay artículo vigente al momento — `scraper_mercadopago.py` ya está preparado para tomarlo automáticamente en cuanto vuelva a publicarse.
-
 ---
 
-## ⚙️ Setup en GitHub Actions
+## ⚙️ Cómo corre
 
-### 1. Crear el repositorio
+GitHub Actions (`.github/workflows/monitor.yml`) todos los días a las 8am ART:
+1. Scrapea Galicia/BBVA/Mercado Pago.
+2. Filtra vencidas/duplicadas/incompletas (`calidad.py`).
+3. Calcula qué es nuevo desde la corrida anterior (`dedup.py`, vía cache de Actions).
+4. Trae precios de combustible oficiales (`precios_combustible.py`).
+5. Genera `docs/index.html` (`generar_pagina.py`) y lo publica en GitHub Pages (`actions/deploy-pages`, sin comittear nada al repo).
 
-```bash
-gh repo create promo-bancarias --private
-cd promo-bancarias
-git add . && git commit -m "init" && git push
-```
-
-### 2. Configurar los secrets
-
-En el repo → **Settings → Secrets and variables → Actions → New repository secret**
-
-| Secret              | Valor                                        |
-|----------------------|-----------------------------------------------|
-| `EMAIL_FROM`         | tu-email@gmail.com                           |
-| `EMAIL_TO`           | donde-recibir@email.com                      |
-| `EMAIL_PASSWORD`     | contraseña de aplicación (ver monitor-parques para el paso a paso de Gmail) |
-| `SMTP_HOST`          | `smtp.gmail.com`                             |
-| `SMTP_PORT`          | `587`                                        |
-
-### 3. Probar manualmente
-
-Repo → **Actions → Monitor Promos Bancarias → Run workflow** (elegí `semanal` o `alerta`).
-
----
-
-## 📅 Horario
-
-- **Lunes 08:00 AM ART**: tabla completa de todas las promos vigentes
-- **Todos los días 08:00 AM ART**: alerta solo si hay promos nuevas desde la última corrida
-
-Editar los cron en `.github/workflows/monitor.yml` (están en UTC, ART = UTC-3).
+Repo público (necesario para que GitHub Pages gratis funcione).
 
 ---
 
@@ -51,14 +42,17 @@ Editar los cron en `.github/workflows/monitor.yml` (están en UTC, ART = UTC-3).
 
 ```
 promo-bancarias/
-├── scraper_galicia.py       # API BFF pública de Galicia, categoría Supermercados (loyalty.bff.bancogalicia.com.ar)
-├── scraper_bbva.py          # API pública de BBVA, campaña Supermercados (go.bbva.com.ar/willgo/fgo/API)
-├── scraper_mercadopago.py   # Fallback editorial (calcularsueldo.com.ar) — MP no publica el detalle día/comercio en su propio sitio
-├── unify.py                 # Normaliza los 3 bancos a un esquema único (día/comercio/descuento/medio de pago)
-├── calidad.py                # Filtra promos vencidas, duplicadas o incompletas antes de armar la tabla
-├── dedup.py                 # seen_promos.json — evita re-notificar
-├── mailer.py                # Arma la tabla HTML (agrupada por día) y envía por SMTP
-├── monitor.py                # Orquestador (--modo semanal | alerta)
+├── scraper_galicia.py         # API BFF pública de Galicia, categoría Supermercados
+├── scraper_bbva.py            # API pública de BBVA, campaña Supermercados
+├── scraper_mercadopago.py     # Fallback editorial (calcularsueldo.com.ar)
+├── unify.py                   # Normaliza los 3 bancos a un esquema único
+├── calidad.py                 # Filtra promos vencidas, duplicadas o incompletas
+├── dedup.py                   # seen_promos.json — detecta qué es nuevo
+├── precios_combustible.py     # Precio real por marca (Secretaría de Energía)
+├── mejor_opcion.py            # Calcula la mejor opción de hoy (súper y combustible)
+├── tabla.py                   # Arma la tabla HTML agrupada por día
+├── generar_pagina.py          # Arma docs/index.html completo
+├── monitor.py                 # Orquestador
 ├── requirements.txt
 └── .github/workflows/monitor.yml
 ```
@@ -67,6 +61,6 @@ promo-bancarias/
 
 ```bash
 pip install -r requirements.txt
-export EMAIL_FROM=... EMAIL_TO=... EMAIL_PASSWORD=... SMTP_HOST=smtp.gmail.com SMTP_PORT=587
-python monitor.py --modo alerta
+python monitor.py
+open docs/index.html
 ```
