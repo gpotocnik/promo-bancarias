@@ -13,6 +13,9 @@ on:
         required: false
         default: "alerta"
 
+permissions:
+  contents: read
+
 jobs:
   monitor:
     runs-on: ubuntu-latest
@@ -62,3 +65,22 @@ jobs:
         with:
           path: seen_promos.json
           key: seen-promos-${{ github.run_id }}
+
+      - name: Subir docs/ como artifact de Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy-pages:
+    needs: monitor
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

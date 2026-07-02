@@ -18,13 +18,7 @@ def _pct(descuento: str) -> int:
     return int(digitos) if digitos else 0
 
 
-def construir_html(promos: list, es_alerta: bool = False) -> str:
-    intro = (
-        "<p>Promociones nuevas de supermercados/combustible detectadas hoy:</p>"
-        if es_alerta
-        else "<p>Resumen semanal — dónde conviene comprar según el día y con qué medio de pago:</p>"
-    )
-
+def construir_tabla(promos: list) -> str:
     ordenadas = sorted(promos, key=lambda p: (orden_dia(p.dias), -_pct(p.descuento), p.banco))
 
     filas = []
@@ -47,7 +41,7 @@ def construir_html(promos: list, es_alerta: bool = False) -> str:
             "</tr>"
         )
 
-    tabla = (
+    return (
         '<table style="width:100%;border-collapse:collapse;font-size:14px;">'
         "<thead><tr>"
         '<th style="text-align:left;padding:6px;border-bottom:2px solid #333;">Comercio</th>'
@@ -57,11 +51,19 @@ def construir_html(promos: list, es_alerta: bool = False) -> str:
         "</tr></thead><tbody>" + "".join(filas) + "</tbody></table>"
     )
 
+
+def construir_html(promos: list, es_alerta: bool = False) -> str:
+    intro = (
+        "<p>Promociones nuevas de supermercados/combustible detectadas hoy:</p>"
+        if es_alerta
+        else "<p>Resumen semanal — dónde conviene comprar según el día y con qué medio de pago:</p>"
+    )
+
     return f"""
     <html><body style="font-family: sans-serif;">
         <h2>🛒 Promos de supermercados y combustible</h2>
         {intro}
-        {tabla}
+        {construir_tabla(promos)}
         <hr>
         <p style="font-size:12px;color:#666;">Generado automáticamente. Verificá vigencia y tope antes de comprar.</p>
     </body></html>

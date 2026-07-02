@@ -9,6 +9,7 @@ from datetime import datetime
 
 from calidad import filtrar_validas
 from dedup import cargar_vistos, guardar_vistos, separar_nuevas
+from generar_pagina import generar_pagina
 from mailer import construir_html, enviar_mail
 from unify import obtener_todas_las_promos
 
@@ -21,6 +22,8 @@ def main(modo: str):
 
     promos = filtrar_validas(crudas)
     print(f"  {len(promos)} promos válidas tras control de calidad")
+
+    generar_pagina(promos)
 
     vistos = cargar_vistos()
     nuevas, vistos_actualizado = separar_nuevas(promos, vistos)
