@@ -1,4 +1,5 @@
 """Arma la tabla HTML de promos, agrupada por día y con destacado opcional de novedades."""
+from logos import logo_banco
 from unify import orden_dia
 
 BANCO_COLOR = {
@@ -11,6 +12,22 @@ BANCO_COLOR = {
 def _pct(descuento: str) -> int:
     digitos = "".join(c for c in descuento.split("%")[0] if c.isdigit())
     return int(digitos) if digitos else 0
+
+
+def _con_link(contenido: str, url: str) -> str:
+    if not url:
+        return contenido
+    return f'<a href="{url}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;">{contenido}</a>'
+
+
+def _img(src: str, size: int = 20) -> str:
+    if not src:
+        return ""
+    return (
+        f'<img src="{src}" width="{size}" height="{size}" '
+        f'style="vertical-align:middle;margin-right:6px;border-radius:4px;object-fit:contain;" '
+        f'onerror="this.style.display=\'none\'">'
+    )
 
 
 def construir_tabla(promos: list, destacadas_ids: set = None) -> str:
@@ -31,12 +48,16 @@ def construir_tabla(promos: list, destacadas_ids: set = None) -> str:
         es_nueva = p.id in destacadas_ids
         fondo = "background:#fff8e1;" if es_nueva else ""
         badge = ' <span title="Nueva esta semana">🆕</span>' if es_nueva else ""
+
+        comercio_html = _con_link(f"{_img(p.logo_comercio)}<b>{p.comercio}</b>{badge}", p.detalle_url)
+        banco_html = _con_link(f"{_img(logo_banco(p.banco), 16)}{p.banco}", p.detalle_url)
+
         filas.append(
             f'<tr style="{fondo}">'
-            f'<td style="padding:6px;border-bottom:1px solid #eee;"><b>{p.comercio}</b>{badge}</td>'
+            f'<td style="padding:6px;border-bottom:1px solid #eee;">{comercio_html}</td>'
             f'<td style="padding:6px;border-bottom:1px solid #eee;">{p.descuento}{tope}</td>'
             f'<td style="padding:6px;border-bottom:1px solid #eee;">{p.medio_pago}</td>'
-            f'<td style="padding:6px;border-bottom:1px solid #eee;color:{color};font-weight:bold;">{p.banco}</td>'
+            f'<td style="padding:6px;border-bottom:1px solid #eee;color:{color};font-weight:bold;">{banco_html}</td>'
             "</tr>"
         )
 

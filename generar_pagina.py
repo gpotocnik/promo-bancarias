@@ -2,8 +2,9 @@
 from datetime import datetime
 from pathlib import Path
 
+from logos import logo_banco
 from mejor_opcion import dia_de_hoy, mejor_combustible_hoy, mejor_supermercado_hoy
-from tabla import construir_tabla
+from tabla import _con_link, _img, construir_tabla
 
 DOCS_DIR = Path("docs")
 
@@ -30,11 +31,12 @@ def _seccion_mejor_opcion(promos: list, precios_combustible: dict) -> str:
     bloques = []
 
     if mejor_super:
+        nombre = _con_link(f"{_img(mejor_super.logo_comercio, 24)}{mejor_super.comercio}", mejor_super.detalle_url)
         bloques.append(
             f'<div style="flex:1;min-width:220px;background:#e8f5e9;border-radius:8px;padding:12px 16px;">'
             f"<b>🛒 Mejor súper hoy</b><br>"
-            f"{mejor_super.comercio} — {mejor_super.descuento}<br>"
-            f'<span style="font-size:13px;color:#555;">{mejor_super.medio_pago} · {mejor_super.banco}</span>'
+            f"{nombre} — {mejor_super.descuento}<br>"
+            f'<span style="font-size:13px;color:#555;">{_img(logo_banco(mejor_super.banco), 14)}{mejor_super.medio_pago} · {mejor_super.banco}</span>'
             f"</div>"
         )
     else:
@@ -46,10 +48,11 @@ def _seccion_mejor_opcion(promos: list, precios_combustible: dict) -> str:
 
     if mejor_comb:
         p, precio_efectivo = mejor_comb["promo"], mejor_comb["precio_efectivo"]
+        nombre = _con_link(f"{_img(p.logo_comercio, 24)}{p.comercio}", p.detalle_url)
         bloques.append(
             f'<div style="flex:1;min-width:220px;background:#e3f2fd;border-radius:8px;padding:12px 16px;">'
             f"<b>⛽ Mejor combustible hoy</b><br>"
-            f"{p.comercio} — {p.descuento}<br>"
+            f"{nombre} — {p.descuento}<br>"
             f'<span style="font-size:13px;color:#555;">Precio efectivo estimado: ${precio_efectivo:,.0f}/litro</span>'
             f"</div>"
         )

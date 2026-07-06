@@ -14,6 +14,8 @@ import requests
 
 CATALOGO_URL = "https://loyalty.bff.bancogalicia.com.ar/api/portal/personalizacion/v1/promociones/catalogo"
 CATEGORIAS = {8: "Supermercados"}  # id de categoría -> nombre; ver docstring
+IMG_BASE = "https://www.galicia.ar/content/dam/galicia/banco-galicia/personas/promociones/catalogo-de-beneficios/"
+DETALLE_URL_TPL = "https://beneficios.galicia.ar/promotions-catalog-filter/idcategoria={id_categoria}"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -32,6 +34,8 @@ class Promo:
     descuento: str
     medio_pago: str
     vigencia_hasta: str
+    logo_url: str
+    detalle_url: str
 
 
 def _medios_de_pago(item: dict) -> str:
@@ -56,6 +60,7 @@ def _promos_de_categoria(id_categoria: int, nombre_categoria: str, page_size: in
         if not items:
             break
         for it in items:
+            imagen = it.get("imagen") or ""
             promos.append(
                 Promo(
                     id=it["id"],
@@ -66,6 +71,8 @@ def _promos_de_categoria(id_categoria: int, nombre_categoria: str, page_size: in
                     descuento=it.get("promocion") or "",
                     medio_pago=_medios_de_pago(it),
                     vigencia_hasta=(it.get("fechaHasta") or "")[:10],
+                    logo_url=f"{IMG_BASE}{imagen}" if imagen else "",
+                    detalle_url=DETALLE_URL_TPL.format(id_categoria=id_categoria),
                 )
             )
         if len(items) < page_size:

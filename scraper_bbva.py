@@ -15,6 +15,7 @@ import requests
 
 CAMPAIGN_URL = "https://go.bbva.com.ar/willgo/fgo/API/v3/campaign/{id_campania}"
 CAMPANIAS = {"2474": "Supermercados"}  # id de campaña -> categoría; ver docstring
+DETALLE_URL_TPL = "https://www.bbva.com.ar/beneficios/campania.html?id={id_campania}"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -34,6 +35,8 @@ class Promo:
     medio_pago: str
     tope: str
     vigencia_hasta: str
+    logo_url: str
+    detalle_url: str
 
 
 def _comercio_y_medio_pago(cabecera: str, grupo_tarjeta: str) -> tuple[str, str]:
@@ -75,6 +78,8 @@ def _promos_de_campania(id_campania: str, nombre_categoria: str) -> list[Promo]:
                     medio_pago=medio_pago,
                     tope=f"${monto_tope}" if monto_tope else "",
                     vigencia_hasta=it.get("fechaHasta") or "",
+                    logo_url=it.get("imagen") or "",
+                    detalle_url=DETALLE_URL_TPL.format(id_campania=id_campania),
                 )
             )
         if len(items) < 10:  # tamaño de página observado

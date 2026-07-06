@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import scraper_bbva
 import scraper_galicia
 import scraper_mercadopago
+from logos import logo_comercio
 
 DIAS_ORDEN = [
     "Lunes", "Martes", "Miércoles", "Jueves", "Viernes",
@@ -23,6 +24,8 @@ class PromoUnificada:
     medio_pago: str
     tope: str
     vigencia: str
+    logo_comercio: str
+    detalle_url: str
 
 
 def _de_galicia() -> list[PromoUnificada]:
@@ -37,6 +40,8 @@ def _de_galicia() -> list[PromoUnificada]:
             medio_pago=p.medio_pago,
             tope="",
             vigencia=p.vigencia_hasta,
+            logo_comercio=logo_comercio(p.comercio, p.logo_url),
+            detalle_url=p.detalle_url,
         )
         for p in scraper_galicia.obtener_promos()
     ]
@@ -54,6 +59,8 @@ def _de_bbva() -> list[PromoUnificada]:
             medio_pago=p.medio_pago,
             tope=p.tope,
             vigencia=p.vigencia_hasta,
+            logo_comercio=logo_comercio(p.comercio, p.logo_url),
+            detalle_url=p.detalle_url,
         )
         for p in scraper_bbva.obtener_promos()
     ]
@@ -71,6 +78,8 @@ def _de_mercadopago() -> list[PromoUnificada]:
             medio_pago=p.medio_pago,
             tope="",
             vigencia="",
+            logo_comercio=logo_comercio(p.comercio, ""),
+            detalle_url=p.fuente,
         )
         for p in scraper_mercadopago.obtener_promos()
     ]
