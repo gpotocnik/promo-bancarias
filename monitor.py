@@ -10,6 +10,7 @@ from dedup import cargar_vistos, guardar_vistos, separar_nuevas
 from generar_pagina import generar_pagina
 from precios_combustible import obtener_precios_promedio
 from unify import obtener_todas_las_promos
+from zona import filtrar_por_zona
 
 
 def main():
@@ -18,8 +19,9 @@ def main():
     crudas = obtener_todas_las_promos()
     print(f"  {len(crudas)} promos scrapeadas")
 
-    promos = filtrar_validas(crudas)
-    print(f"  {len(promos)} promos válidas tras control de calidad")
+    validas = filtrar_validas(crudas)
+    promos = filtrar_por_zona(validas)
+    print(f"  {len(promos)} promos válidas y en zona (CABA + Buenos Aires) tras control de calidad")
 
     vistos = cargar_vistos()
     nuevas, vistos_actualizado = separar_nuevas(promos, vistos)

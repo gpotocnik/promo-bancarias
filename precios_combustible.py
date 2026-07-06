@@ -2,6 +2,8 @@
 Precio promedio de combustible por marca, usando el dataset oficial y en vivo de la
 Secretaría de Energía (Resolución 314/2016) — actualizado por las propias estaciones
 de servicio dentro de las 8hs de cualquier cambio de precio.
+
+Filtra por zona: CABA + Buenos Aires (configurable vía PROVINCIAS).
 """
 import csv
 import io
@@ -14,6 +16,7 @@ CSV_URL = (
 )
 
 PRODUCTO_DEFAULT = "Nafta (súper) entre 92 y 95 Ron"
+PROVINCIAS = {"CAPITAL FEDERAL", "BUENOS AIRES"}  # CABA + provincia de Buenos Aires
 
 MARCA_NORMALIZADA = {
     "YPF": "YPF",
@@ -23,8 +26,10 @@ MARCA_NORMALIZADA = {
 }
 
 
-def obtener_precios_promedio(producto: str = PRODUCTO_DEFAULT) -> dict:
-    """Devuelve {marca: precio_promedio} para el producto pedido, a nivel nacional."""
+def obtener_precios_promedio(producto: str = PRODUCTO_DEFAULT, provincias: set = None) -> dict:
+    """Devuelve {marca: precio_promedio} para el producto pedido, filtrado por provincia."""
+    provincias = provincias if provincias is not None else PROVINCIAS
+
     r = requests.get(CSV_URL, timeout=30)
     r.raise_for_status()
 
@@ -33,6 +38,8 @@ def obtener_precios_promedio(producto: str = PRODUCTO_DEFAULT) -> dict:
     reader = csv.DictReader(io.StringIO(r.content.decode("utf-8-sig")))
     for row in reader:
         if row.get("producto") != producto:
+            continue
+        if provincias and row.get("provincia") not in provincias:
             continue
         marca_cruda = row.get("empresabandera", "")
         marca = MARCA_NORMALIZADA.get(marca_cruda)
@@ -51,4 +58,4 @@ def obtener_precios_promedio(producto: str = PRODUCTO_DEFAULT) -> dict:
 if __name__ == "__main__":
     precios = obtener_precios_promedio()
     for marca, precio in sorted(precios.items(), key=lambda x: x[1]):
-        print(f"{marca}: ${precio:.2f}/litro (promedio nacional)")
+        print(f"{marca}: ${precio:.2f}/litro (CABA + Buenos Aires)")

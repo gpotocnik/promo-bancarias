@@ -15,6 +15,13 @@ No manda mail — corrió esa versión pero se descartó a favor de una página 
   - Combustible: precio efectivo real (precio oficial de la Secretaría de Energía × descuento del banco) — hoy no hay ninguna promo de combustible activa en los 3 bancos, así que esta sección queda vacía hasta que aparezca una.
 - **Tabla completa** de la semana, agrupada por día, con comercio/descuento/medio de pago/banco.
 
+## Zona
+
+Filtrado a **CABA + provincia de Buenos Aires**:
+
+- **Combustible**: preciso, usa el dataset oficial de la Secretaría de Energía filtrado por `provincia` (`CAPITAL FEDERAL` + `BUENOS AIRES`).
+- **Supermercados**: los 3 bancos NO exponen ubicación de sucursal en sus APIs de promos (la promo aplica "en cualquier sucursal adherida" a nivel nacional, sin dato de dónde queda cada una). Por eso `zona.py` usa una lista curada a mano (investigada cadena por cadena en julio 2026) de comercios SIN alcance en CABA/GBA — hoy excluye **La Anónima** (Patagonia + interior bonaerense lejano), **Supermercados Toledo** (Mar del Plata) y **Supermercados Kilbel** (Santa Fe, ni siquiera Buenos Aires). Ante la duda se deja el comercio visible en vez de excluirlo — es mejor mostrar de más que esconder una promo válida. Si aparece una cadena nueva desconocida, no se filtra automáticamente.
+
 ## Por qué no hay "mejor opción" con precio real en supermercados
 
 Para combustible existe un dataset oficial y en vivo (Secretaría de Energía, Resolución 314/2016 — `datos.gob.ar`) con precio real por marca, actualizado por las propias estaciones dentro de las 8hs de cualquier cambio. Para supermercados no hay un equivalente liviano: la única fuente pública es **Precios Claros** (preciosclaros.gob.ar), que expone precio por producto individual por sucursal (no un promedio por cadena) a través de una API no documentada — los scrapers comunitarios que existen tardan horas en levantar el catálogo completo. Por eso el ranking de supermercados usa % de descuento, no precio real; si en algún momento se quiere hacer el cálculo real, habría que definir una canasta de productos representativa y armar ese scraper aparte.
@@ -48,7 +55,8 @@ promo-bancarias/
 ├── unify.py                   # Normaliza los 3 bancos a un esquema único
 ├── calidad.py                 # Filtra promos vencidas, duplicadas o incompletas
 ├── dedup.py                   # seen_promos.json — detecta qué es nuevo
-├── precios_combustible.py     # Precio real por marca (Secretaría de Energía)
+├── precios_combustible.py     # Precio real por marca (Secretaría de Energía), filtrado por provincia
+├── zona.py                    # Excluye cadenas de supermercado sin alcance en CABA/GBA (curado a mano)
 ├── mejor_opcion.py            # Calcula la mejor opción de hoy (súper y combustible)
 ├── tabla.py                   # Arma la tabla HTML agrupada por día
 ├── generar_pagina.py          # Arma docs/index.html completo
