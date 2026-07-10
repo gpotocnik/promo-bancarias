@@ -1,6 +1,6 @@
 # 🛒 Monitor de Promociones de Supermercados y Combustible
 
-Página web que muestra las promociones de **supermercados** (y combustible, si aparecen) de **Banco Galicia**, **BBVA** y **Mercado Pago**, actualizada automáticamente todos los días.
+Página web que muestra las promociones de **supermercados** de **Banco Galicia**, **BBVA** y **Mercado Pago**, más **beneficios de combustible** — tanto bancarios como propios de las petroleras (YPF, Shell) — actualizada automáticamente todos los días.
 
 **Página en vivo:** https://gpotocnik.github.io/promo-bancarias/
 
@@ -12,7 +12,7 @@ No manda mail — corrió esa versión pero se descartó a favor de una página 
 - **Novedades de la semana**: promos que aparecieron desde la última corrida (🆕 en la tabla).
 - **Mejor opción de hoy**:
   - Supermercado: la promo con mayor % de descuento entre las vigentes hoy.
-  - Combustible: precio efectivo real (precio oficial de la Secretaría de Energía × descuento del banco) — hoy no hay ninguna promo de combustible activa en los 3 bancos, así que esta sección queda vacía hasta que aparezca una.
+  - Combustible: precio efectivo real (precio oficial de la Secretaría de Energía × descuento) — combina promos bancarias (Galicia/BBVA/MP, si existen) con los beneficios propios de las petroleras (ver abajo). Si no hay ninguna promo activa, la sección queda vacía.
 - **Tabla completa** de la semana, agrupada por día, con comercio/descuento/medio de pago/banco.
 
 ## Zona
@@ -21,6 +21,10 @@ Filtrado a **CABA + provincia de Buenos Aires**:
 
 - **Combustible**: preciso, usa el dataset oficial de la Secretaría de Energía filtrado por `provincia` (`CAPITAL FEDERAL` + `BUENOS AIRES`).
 - **Supermercados**: los 3 bancos NO exponen ubicación de sucursal en sus APIs de promos (la promo aplica "en cualquier sucursal adherida" a nivel nacional, sin dato de dónde queda cada una). Por eso `zona.py` usa una lista curada a mano (investigada cadena por cadena en julio 2026) de comercios SIN alcance en CABA/GBA — hoy excluye **La Anónima** (Patagonia + interior bonaerense lejano), **Supermercados Toledo** (Mar del Plata) y **Supermercados Kilbel** (Santa Fe, ni siquiera Buenos Aires). Ante la duda se deja el comercio visible en vez de excluirlo — es mejor mostrar de más que esconder una promo válida. Si aparece una cadena nueva desconocida, no se filtra automáticamente.
+
+## Beneficios propios de combustible (sin banco)
+
+Además de lo que ofrecen Galicia/BBVA/MP, la página incluye beneficios que las propias petroleras dan sin depender de ningún banco (`beneficios_propios.py`): hoy son 3% a 6% de descuento en YPF por carga nocturna/autodespacho/socios ACA, y 10% en Shell (V-Power, miércoles). No hay una fuente pública con estructura fija para scrapear esto de forma confiable — se investigó cruzando varios medios (Perfil, Canal26, iProfesional, todos coinciden en los mismos números) y se descartó un sitio que parecía especializado por tener datos duplicados/genéricos entre marcas distintas. Por eso es una lista **curada a mano, con fecha de última verificación** (`FECHA_VERIFICADO` en el archivo) — hay que revisarla de tanto en tanto a mano, no se actualiza sola.
 
 ## Por qué no hay "mejor opción" con precio real en supermercados
 
@@ -52,7 +56,9 @@ promo-bancarias/
 ├── scraper_galicia.py         # API BFF pública de Galicia, categoría Supermercados
 ├── scraper_bbva.py            # API pública de BBVA, campaña Supermercados
 ├── scraper_mercadopago.py     # Fallback editorial (calcularsueldo.com.ar)
-├── unify.py                   # Normaliza los 3 bancos a un esquema único
+├── beneficios_propios.py      # Beneficios de petroleras sin banco (curado a mano, YPF/Shell)
+├── logos.py                   # Logos de banco/comercio (favicons + imágenes de las APIs)
+├── unify.py                   # Normaliza todas las fuentes a un esquema único
 ├── calidad.py                 # Filtra promos vencidas, duplicadas o incompletas
 ├── dedup.py                   # seen_promos.json — detecta qué es nuevo
 ├── precios_combustible.py     # Precio real por marca (Secretaría de Energía), filtrado por provincia

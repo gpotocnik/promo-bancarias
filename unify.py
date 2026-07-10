@@ -1,6 +1,7 @@
 """Normaliza las promos de supermercados/combustible de cada banco a un esquema único."""
 from dataclasses import dataclass
 
+import beneficios_propios
 import scraper_bbva
 import scraper_galicia
 import scraper_mercadopago
@@ -85,9 +86,34 @@ def _de_mercadopago() -> list[PromoUnificada]:
     ]
 
 
+def _de_beneficios_propios() -> list[PromoUnificada]:
+    return [
+        PromoUnificada(
+            id=f"propio:{p.id}",
+            banco=p.banco,
+            categoria=p.categoria,
+            comercio=p.comercio,
+            dias=p.dias,
+            descuento=p.descuento,
+            medio_pago=p.medio_pago,
+            tope=p.tope,
+            vigencia="",
+            logo_comercio=logo_comercio(p.comercio),
+            detalle_url="",
+        )
+        for p in beneficios_propios.obtener_promos()
+    ]
+
+
 def obtener_todas_las_promos() -> list[PromoUnificada]:
     promos = []
-    for fn, banco in [(_de_galicia, "Galicia"), (_de_bbva, "BBVA"), (_de_mercadopago, "Mercado Pago")]:
+    fuentes = [
+        (_de_galicia, "Galicia"),
+        (_de_bbva, "BBVA"),
+        (_de_mercadopago, "Mercado Pago"),
+        (_de_beneficios_propios, "Beneficios propios (YPF/Shell)"),
+    ]
+    for fn, banco in fuentes:
         try:
             promos.extend(fn())
         except Exception as e:

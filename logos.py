@@ -14,6 +14,8 @@ BANCO_LOGO = {
     "Galicia": "https://www.google.com/s2/favicons?domain=galicia.ar&sz=64",
     "BBVA": "https://www.google.com/s2/favicons?domain=bbva.com.ar&sz=64",
     "Mercado Pago": "https://www.google.com/s2/favicons?domain=mercadopago.com.ar&sz=64",
+    "YPF": "https://www.google.com/s2/favicons?domain=ypf.com.ar&sz=64",
+    "Shell": "https://www.google.com/s2/favicons?domain=shell.com.ar&sz=64",
 }
 
 DOMINIO_POR_COMERCIO = {

@@ -6,6 +6,8 @@ BANCO_COLOR = {
     "Galicia": "#EA580C",
     "BBVA": "#1447E6",
     "Mercado Pago": "#00A3E0",
+    "YPF": "#005CA9",
+    "Shell": "#DD1D21",
 }
 
 
