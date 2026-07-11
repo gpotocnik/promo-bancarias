@@ -39,7 +39,7 @@ def _de_galicia() -> list[PromoUnificada]:
             dias=p.dias,
             descuento=p.descuento,
             medio_pago=p.medio_pago,
-            tope="",
+            tope=p.tope,
             vigencia=p.vigencia_hasta,
             logo_comercio=logo_comercio(p.comercio, p.logo_url),
             detalle_url=p.detalle_url,
