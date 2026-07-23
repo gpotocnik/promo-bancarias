@@ -1,6 +1,6 @@
 # 🛒 Monitor de Promociones de Supermercados y Combustible
 
-Página web que muestra las promociones de **supermercados** de **Banco Galicia**, **BBVA** y **Mercado Pago**, más **beneficios de combustible** — tanto bancarios como propios de las petroleras (YPF, Shell) — actualizada automáticamente todos los días.
+Página web que muestra las promociones de **supermercados** de **Banco Galicia**, **BBVA**, **Mercado Pago** y **American Express (The Platinum Card)**, más **beneficios de combustible** — tanto bancarios como propios de las petroleras (YPF, Shell) — actualizada automáticamente todos los días.
 
 **Página en vivo:** https://gpotocnik.github.io/promo-bancarias/
 
@@ -21,6 +21,10 @@ Filtrado a **CABA + provincia de Buenos Aires**:
 
 - **Combustible**: preciso, usa el dataset oficial de la Secretaría de Energía filtrado por `provincia` (`CAPITAL FEDERAL` + `BUENOS AIRES`).
 - **Supermercados**: los 3 bancos NO exponen ubicación de sucursal en sus APIs de promos (la promo aplica "en cualquier sucursal adherida" a nivel nacional, sin dato de dónde queda cada una). Por eso `zona.py` usa una lista curada a mano (investigada cadena por cadena en julio 2026) de comercios SIN alcance en CABA/GBA — hoy excluye **La Anónima** (Patagonia + interior bonaerense lejano), **Supermercados Toledo** (Mar del Plata) y **Supermercados Kilbel** (Santa Fe, ni siquiera Buenos Aires). Ante la duda se deja el comercio visible en vez de excluirlo — es mejor mostrar de más que esconder una promo válida. Si aparece una cadena nueva desconocida, no se filtra automáticamente.
+
+## American Express (The Platinum Card)
+
+`scraper_amex.py` scrapea la página oficial de promociones de Amex (HTML estático, sin Playwright). Hoy solo tiene un beneficio de supermercado activo: "Especial Supermercados" — $100.000 de reintegro por mes alcanzando $400.000 de consumo, los jueves, exclusivo para socios de The Platinum Card (titular o adicional), válido en **Jumbo y Disco** (marcas Cencosud) presencial u online. Se muestra como "25% de reintegro" (100.000/400.000) para que sea comparable con el resto de la tabla. No tiene fecha de vencimiento explícita en la página — parece un beneficio permanente del programa, no mensual como las promos bancarias.
 
 ## Beneficios propios de combustible (sin banco)
 
@@ -56,6 +60,7 @@ promo-bancarias/
 ├── scraper_galicia.py         # API BFF pública de Galicia, categoría Supermercados
 ├── scraper_bbva.py            # API pública de BBVA, campaña Supermercados
 ├── scraper_mercadopago.py     # Fallback editorial (calcularsueldo.com.ar)
+├── scraper_amex.py            # HTML estático de American Express, especial supermercados Platinum
 ├── beneficios_propios.py      # Beneficios de petroleras sin banco (curado a mano, YPF/Shell)
 ├── logos.py                   # Logos de banco/comercio (favicons + imágenes de las APIs)
 ├── unify.py                   # Normaliza todas las fuentes a un esquema único

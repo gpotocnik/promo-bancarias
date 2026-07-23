@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 
 import beneficios_propios
+import scraper_amex
 import scraper_bbva
 import scraper_galicia
 import scraper_mercadopago
@@ -86,6 +87,25 @@ def _de_mercadopago() -> list[PromoUnificada]:
     ]
 
 
+def _de_amex() -> list[PromoUnificada]:
+    return [
+        PromoUnificada(
+            id=f"amex:{p.id}",
+            banco="American Express",
+            categoria=p.categoria,
+            comercio=p.comercio,
+            dias=p.dias,
+            descuento=p.descuento,
+            medio_pago=p.medio_pago,
+            tope=p.tope,
+            vigencia=p.vigencia_hasta,
+            logo_comercio=logo_comercio(p.comercio, p.logo_url),
+            detalle_url=p.detalle_url,
+        )
+        for p in scraper_amex.obtener_promos()
+    ]
+
+
 def _de_beneficios_propios() -> list[PromoUnificada]:
     return [
         PromoUnificada(
@@ -111,6 +131,7 @@ def obtener_todas_las_promos() -> list[PromoUnificada]:
         (_de_galicia, "Galicia"),
         (_de_bbva, "BBVA"),
         (_de_mercadopago, "Mercado Pago"),
+        (_de_amex, "American Express"),
         (_de_beneficios_propios, "Beneficios propios (YPF/Shell)"),
     ]
     for fn, banco in fuentes:

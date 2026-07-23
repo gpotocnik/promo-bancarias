@@ -8,6 +8,7 @@ BANCO_COLOR = {
     "Mercado Pago": "#00A3E0",
     "YPF": "#005CA9",
     "Shell": "#DD1D21",
+    "American Express": "#016FD0",
 }
 
 
