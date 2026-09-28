@@ -17,10 +17,10 @@ No manda mail — corrió esa versión pero se descartó a favor de una página 
 
 ## Zona
 
-Filtrado a **CABA + provincia de Buenos Aires**:
+Filtrado a **CABA + GBA Norte** (la zona real es Florida, Vicente López — no toda la provincia de Buenos Aires, que es enorme e incluye lugares como La Plata o Mar del Plata):
 
-- **Combustible**: preciso, usa el dataset oficial de la Secretaría de Energía filtrado por `provincia` (`CAPITAL FEDERAL` + `BUENOS AIRES`).
-- **Supermercados**: los 3 bancos NO exponen ubicación de sucursal en sus APIs de promos (la promo aplica "en cualquier sucursal adherida" a nivel nacional, sin dato de dónde queda cada una). Por eso `zona.py` usa una lista curada a mano (investigada cadena por cadena en julio 2026) de comercios SIN alcance en CABA/GBA — hoy excluye **La Anónima** (Patagonia + interior bonaerense lejano), **Supermercados Toledo** (Mar del Plata) y **Supermercados Kilbel** (Santa Fe, ni siquiera Buenos Aires). Ante la duda se deja el comercio visible en vez de excluirlo — es mejor mostrar de más que esconder una promo válida. Si aparece una cadena nueva desconocida, no se filtra automáticamente.
+- **Combustible**: preciso, usa el dataset oficial de la Secretaría de Energía filtrado por `provincia` (`CAPITAL FEDERAL`) y por `localidad` dentro de la provincia de Buenos Aires (Vicente López, San Isidro, San Fernando, Tigre, San Martín, San Miguel, Malvinas Argentinas, José C. Paz, Escobar, Pilar — ver `LOCALIDADES_GBA_NORTE` en `precios_combustible.py`).
+- **Supermercados**: los 3 bancos NO exponen ubicación de sucursal en sus APIs de promos (la promo aplica "en cualquier sucursal adherida" a nivel nacional, sin dato de dónde queda cada una). Por eso `zona.py` usa una lista curada a mano (investigada cadena por cadena en julio y revisada en septiembre 2026) de comercios SIN alcance en CABA/GBA Norte — hoy excluye **La Anónima** (Patagonia + interior bonaerense lejano), **Supermercados Toledo** (Mar del Plata), **Supermercados Kilbel** (Santa Fe), **Alvear Supermercados** (Santa Fe capital), **Almacenes Pampas / Almacenes de Marca / Supermercados El Nene** (La Plata y Berazategui/Hudson, GBA Sur), **Nini Mayorista** (La Plata y Moreno), **Supermercados La Gallega** (Rosario) y **CoopeHogar** (sin sucursal confirmada en la zona). Ante la duda se deja el comercio visible en vez de excluirlo — es mejor mostrar de más que esconder una promo válida. Si aparece una cadena nueva desconocida, no se filtra automáticamente.
 
 ## American Express (The Platinum Card)
 
