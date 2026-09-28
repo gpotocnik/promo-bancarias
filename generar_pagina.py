@@ -82,7 +82,11 @@ def generar_pagina(promos: list, nuevas: list = None, precios_combustible: dict 
 <title>Promos supermercados y combustible</title>
 <style>
   body {{ font-family: sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }}
-  table {{ width: 100%; border-collapse: collapse; }}
+  table {{ min-width: 700px; border-collapse: collapse; }}
+  .tabla-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -1rem; padding: 0 1rem; }}
+  @media (max-width: 700px) {{
+    .tabla-wrap::after {{ content: "← Deslizá para ver todo →"; display: block; font-size: 12px; color: #888; text-align: center; padding-top: 4px; }}
+  }}
 </style>
 </head>
 <body>
@@ -93,7 +97,9 @@ def generar_pagina(promos: list, nuevas: list = None, precios_combustible: dict 
 <h2>🛒 Todas las promos de la semana</h2>
 <p>Dónde conviene comprar según el día, con qué comercio y qué medio de pago. Fuentes: Banco Galicia, BBVA, Mercado Pago.
 Filtrado a CABA + provincia de Buenos Aires (combustible: precio oficial real de esa zona; supermercados: se excluyeron a mano las cadenas sin sucursales en la zona, ver <a href="https://github.com/gpotocnik/promo-bancarias#zona">detalle</a>).</p>
+<div class="tabla-wrap">
 {tabla_html}
+</div>
 <hr>
 <p style="font-size:12px;color:#666;">Última actualización: {actualizado}. Verificá vigencia y tope antes de comprar.</p>
 </body>
