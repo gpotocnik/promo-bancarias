@@ -36,6 +36,14 @@ LOCALIDADES_GBA_NORTE = {
 }
 
 
+MARCA_NORMALIZADA = {
+    "YPF": "YPF",
+    "SHELL C.A.P.S.A.": "Shell",
+    "AXION": "Axion",
+    "PUMA": "Puma",
+}
+
+
 def _en_zona(row: dict) -> bool:
     if row.get("provincia") == "CAPITAL FEDERAL":
         return True
