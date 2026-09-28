@@ -36,10 +36,15 @@ FUERA_DE_ZONA = {
 
 
 def en_zona(comercio: str) -> bool:
-    # Contains, no igualdad exacta: algunas fuentes (ej. BBVA) agregan sufijos
-    # variables al nombre del comercio ("... QR Modo", "Beneficio exclusivo MODO").
-    comercio_l = comercio.strip().lower()
-    return not any(excluido in comercio_l for excluido in FUERA_DE_ZONA)
+    # Por conjunto de palabras, no por substring ni igualdad exacta: las fuentes
+    # agregan sufijos variables ("... QR Modo") o cambian el orden de las palabras
+    # ("KILBEL SUPERMERCADOS" vs. "Supermercados Kilbel"), así que ni un `in` simple
+    # ni una igualdad exacta alcanzan.
+    palabras_comercio = set(comercio.strip().lower().split())
+    for excluido in FUERA_DE_ZONA:
+        if set(excluido.split()) <= palabras_comercio:
+            return False
+    return True
 
 
 def filtrar_por_zona(promos: list) -> list:
