@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   monitor:
@@ -46,6 +46,21 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs
+
+      - name: Mantener el repo activo (evita que GitHub apague el schedule a los 60 días)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          dias=$(( ( $(date +%s) - $(git log -1 --format=%ct) ) / 86400 ))
+          echo "días desde el último commit: $dias"
+          if [ "$dias" -ge 45 ]; then
+            echo "$(date -u +%Y-%m-%d)" > .keepalive
+            git add .keepalive
+            git commit -m "Keepalive: evitar que GitHub apague el workflow programado por inactividad [skip ci]"
+            git push
+          else
+            echo "todavía no hace falta, faltan $((45 - dias)) días"
+          fi
 
   deploy-pages:
     needs: monitor
