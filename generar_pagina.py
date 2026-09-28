@@ -96,7 +96,7 @@ def generar_pagina(promos: list, nuevas: list = None, precios_combustible: dict 
 {_seccion_mejor_opcion(promos, precios_combustible)}
 <h2>🛒 Todas las promos de la semana</h2>
 <p>Dónde conviene comprar según el día, con qué comercio y qué medio de pago. Fuentes: Banco Galicia, BBVA, Mercado Pago.
-Filtrado a CABA + provincia de Buenos Aires (combustible: precio oficial real de esa zona; supermercados: se excluyeron a mano las cadenas sin sucursales en la zona, ver <a href="https://github.com/gpotocnik/promo-bancarias#zona">detalle</a>).</p>
+Filtrado a CABA + GBA Norte (combustible: precio oficial real de esa zona; supermercados: se excluyeron a mano las cadenas sin sucursales en la zona, ver <a href="https://github.com/gpotocnik/promo-bancarias#zona">detalle</a>).</p>
 <div class="tabla-wrap">
 {tabla_html}
 </div>
