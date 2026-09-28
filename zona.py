@@ -36,7 +36,10 @@ FUERA_DE_ZONA = {
 
 
 def en_zona(comercio: str) -> bool:
-    return comercio.strip().lower() not in FUERA_DE_ZONA
+    # Contains, no igualdad exacta: algunas fuentes (ej. BBVA) agregan sufijos
+    # variables al nombre del comercio ("... QR Modo", "Beneficio exclusivo MODO").
+    comercio_l = comercio.strip().lower()
+    return not any(excluido in comercio_l for excluido in FUERA_DE_ZONA)
 
 
 def filtrar_por_zona(promos: list) -> list:
