@@ -21,7 +21,7 @@ def main():
 
     validas = filtrar_validas(crudas)
     promos = filtrar_por_zona(validas)
-    print(f"  {len(promos)} promos válidas y en zona (CABA + Buenos Aires) tras control de calidad")
+    print(f"  {len(promos)} promos válidas y en zona (CABA + GBA Norte) tras control de calidad")
 
     vistos = cargar_vistos()
     nuevas, vistos_actualizado = separar_nuevas(promos, vistos)
