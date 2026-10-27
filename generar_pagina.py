@@ -14,7 +14,7 @@ def _seccion_alerta_fuentes(fuentes: list) -> str:
         return ""
     return (
         '<div style="background:#fdecea;border:1px solid #f5c2c0;border-radius:8px;padding:10px 14px;margin:16px 0;font-size:14px;">'
-        f"⚠️ <b>No se pudo actualizar:</b> {', '.join(fuentes)}. Las promos de esas fuentes pueden faltar o estar desactualizadas."
+        f"⚠️ <b>No se pudo actualizar:</b> {', '.join(fuentes)}. Esa información puede faltar o estar desactualizada."
         "</div>"
     )
 
@@ -107,8 +107,8 @@ def generar_pagina(promos: list, nuevas: list = None, precios_combustible: dict 
 {_seccion_destacadas(nuevas)}
 {_seccion_mejor_opcion(promos, precios_combustible)}
 <h2>🛒 Todas las promos de la semana</h2>
-<p>Dónde conviene comprar según el día, con qué comercio y qué medio de pago. Fuentes: Banco Galicia, BBVA, Mercado Pago.
-Filtrado a CABA + GBA Norte (combustible: precio oficial real de esa zona; supermercados: se excluyeron a mano las cadenas sin sucursales en la zona, ver <a href="https://github.com/gpotocnik/promo-bancarias#zona">detalle</a>).</p>
+<p>Dónde conviene comprar según el día, con qué comercio y qué medio de pago. Fuentes: Banco Galicia, BBVA, Mercado Pago, American Express Platinum, YPF y Shell.
+Filtrado a CABA + GBA Norte (combustible: precio oficial real de esa zona; supermercados: solo cadenas con sucursales confirmadas en la zona, ver <a href="https://github.com/gpotocnik/promo-bancarias#zona">detalle</a>).</p>
 <div class="tabla-wrap">
 {tabla_html}
 </div>
