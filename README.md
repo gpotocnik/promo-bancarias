@@ -15,12 +15,16 @@ No manda mail — corrió esa versión pero se descartó a favor de una página 
   - Combustible: precio efectivo real (precio oficial de la Secretaría de Energía × descuento) — combina promos bancarias (Galicia/BBVA/MP, si existen) con los beneficios propios de las petroleras (ver abajo). Si no hay ninguna promo activa, la sección queda vacía.
 - **Tabla completa** de la semana, agrupada por día, con comercio/descuento/medio de pago/banco.
 
+## Cuando una fuente falla
+
+Si una fuente falla o no devuelve promos, la página muestra un aviso rojo arriba ("⚠️ No se pudo actualizar: …") en vez de quedar desactualizada en silencio. Incidente de referencia (oct 2026): Galicia cambió nombres de parámetros (`IdCategoria` → `idCategoria`, `criterioDeOrden`) y movió el endpoint de detalle (`catalogo/v1/promociones/idPromocion/{id}` → `personalizacion/v1/promociones/idPromocion/{id}`); BBVA movió el % al título y los días al detalle; Mercado Pago cambió los títulos de sus guías; el CSV de combustible dio timeout por HTTP desde los runners de GitHub (ahora HTTPS con reintentos).
+
 ## Zona
 
 Filtrado a **CABA + GBA Norte** (la zona real es Florida, Vicente López — no toda la provincia de Buenos Aires, que es enorme e incluye lugares como La Plata o Mar del Plata):
 
 - **Combustible**: preciso, usa el dataset oficial de la Secretaría de Energía filtrado por `provincia` (`CAPITAL FEDERAL`) y por `localidad` dentro de la provincia de Buenos Aires (Vicente López, San Isidro, San Fernando, Tigre, San Martín, San Miguel, Malvinas Argentinas, José C. Paz, Escobar, Pilar — ver `LOCALIDADES_GBA_NORTE` en `precios_combustible.py`).
-- **Supermercados**: los 3 bancos NO exponen ubicación de sucursal en sus APIs de promos (la promo aplica "en cualquier sucursal adherida" a nivel nacional, sin dato de dónde queda cada una). Por eso `zona.py` usa una lista curada a mano (investigada cadena por cadena en julio y revisada en septiembre 2026) de comercios SIN alcance en CABA/GBA Norte — hoy excluye **La Anónima** (Patagonia + interior bonaerense lejano), **Supermercados Toledo** (Mar del Plata), **Supermercados Kilbel** (Santa Fe), **Alvear Supermercados** (Santa Fe capital), **Almacenes Pampas / Almacenes de Marca / Supermercados El Nene** (La Plata y Berazategui/Hudson, GBA Sur), **Nini Mayorista** (La Plata y Moreno), **Supermercados La Gallega** (Rosario) y **CoopeHogar** (sin sucursal confirmada en la zona). Ante la duda se deja el comercio visible en vez de excluirlo — es mejor mostrar de más que esconder una promo válida. Si aparece una cadena nueva desconocida, no se filtra automáticamente.
+- **Supermercados**: los bancos NO exponen ubicación de sucursal en sus APIs de promos (la promo aplica "en cualquier sucursal adherida", sin dato de dónde queda cada una). Por eso `zona.py` usa una **lista permitida curada a mano** de cadenas con sucursales confirmadas en CABA/GBA Norte (Coto, Carrefour, Changomas, Día, Disco, Jumbo, Vea, Makro, Diarco, Supercoop, MasOnline, The Food Market, Tiendas Elten, Don Ángel). Todo lo demás se descarta y se loguea (`[ZONA] ... fuera de la lista permitida`). Antes se excluía solo lo confirmado fuera de zona, pero en octubre 2026 el catálogo de Galicia pasó a traer decenas de cadenas provinciales (Santa Fe, Córdoba, Entre Ríos…) y una lista de exclusión no podía seguirle el ritmo. Si falta una cadena relevante, agregarla a `ZONA_PERMITIDA` tras confirmar sucursales en la zona (el matching es por conjunto de palabras, sin acentos y sin importar el orden).
 
 ## American Express (The Platinum Card)
 

@@ -1,5 +1,7 @@
 """Calcula la mejor opción del día: por precio real en combustible, por % en supermercados
 (no hay una fuente pública liviana de precio promedio por cadena de supermercado — ver README)."""
+import re
+
 from tabla import _pct
 
 DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
@@ -24,15 +26,26 @@ def aplica_hoy(dias_promo: str, hoy: str = None) -> bool:
     return "todos los días" in dias_promo_l or hoy.lower() in dias_promo_l
 
 
+def _valor_tope(tope: str) -> float:
+    """Para desempatar: sin tope > tope más alto > tope desconocido."""
+    if not tope:
+        return 0
+    if tope == "sin tope":
+        return float("inf")
+    digitos = re.search(r"\$\s*([\d.]+)", tope)
+    return float(digitos.group(1).replace(".", "")) if digitos else 0
+
+
 def mejor_supermercado_hoy(promos: list, hoy: str = None) -> dict:
-    """Mejor por % de descuento entre las promos de supermercado vigentes hoy."""
+    """Mejor por % de descuento entre las promos de supermercado vigentes hoy
+    (a igual %, gana el que tiene mayor tope de reintegro)."""
     candidatas = [
         p for p in promos
         if p.categoria == "Supermercados" and aplica_hoy(p.dias, hoy)
     ]
     if not candidatas:
         return None
-    return max(candidatas, key=lambda p: _pct(p.descuento))
+    return max(candidatas, key=lambda p: (_pct(p.descuento), _valor_tope(p.tope)))
 
 
 def mejor_combustible_hoy(promos: list, precios_por_marca: dict, hoy: str = None) -> dict:

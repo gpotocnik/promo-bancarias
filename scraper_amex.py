@@ -43,13 +43,16 @@ def obtener_promos() -> list[Promo]:
 
     promos = []
     for tarjeta in soup.select(".recduadrobenf"):
-        img = tarjeta.select_one("img[alt]")
-        if not img:
-            continue
-        comercio = img["alt"].strip()
-
+        # El primer <img alt> de la tarjeta es un ícono ("tarjetas_consumer"); la marca
+        # está en el primer <h3> y el logo en img.img-fluid.
         titulos = tarjeta.select("h3")
-        dias = titulos[1].get_text(strip=True) if len(titulos) > 1 else ""
+        img = tarjeta.select_one("img.img-fluid")
+        if len(titulos) < 2 or not img:
+            continue
+        comercio = titulos[0].get_text(strip=True)
+        dias = titulos[1].get_text(strip=True)
+        if "supermercado" not in dias.lower():  # ej: "Easy" (ferretería) no es supermercado
+            continue
 
         desc = tarjeta.select_one("p")
         descripcion = desc.get_text(strip=True) if desc else ""

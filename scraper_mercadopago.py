@@ -27,8 +27,12 @@ from dataclasses import asdict, dataclass
 import requests
 from bs4 import BeautifulSoup
 
+from dias import dias_en as _dias_en
+
 TAG_ARCHIVO_URL = "https://calcularsueldo.com.ar/tag/mercado-pago/"
-ARTICULO_SUPERMERCADOS_PATRON = re.compile(r"supermercados-con-mercado-pago", re.I)
+# Los títulos cambian mes a mes ("supermercados-con-mercado-pago-en-junio", "supermercados-los-descuentos-de-
+# mercado-pago-para-agosto", "supermercados-todos-los-descuentos-dia-por-dia-con-mercado-pago-en-septiembre"...)
+ARTICULO_SUPERMERCADOS_PATRON = re.compile(r"supermercados.*mercado-pago|mercado-pago.*supermercados", re.I)
 ARTICULO_COMBUSTIBLE_PATRON = re.compile(r"(nafta|combustible)-.*mercado-pago|mercado-pago.*(nafta|combustible)", re.I)
 
 DIAS_VALIDOS = {
@@ -53,6 +57,7 @@ class Promo:
     descuento: str
     medio_pago: str
     fuente: str
+    tope: str = ""
 
 
 def _link_mas_reciente(patron: re.Pattern) -> str | None:
@@ -81,33 +86,80 @@ def _articulo_body(url: str) -> str:
     return data["articleBody"]
 
 
+MESES = "enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre"
+def _mes_de_url(url: str) -> str:
+    m = re.search(rf"({MESES})-(\d{{4}})", url)
+    return f"{m.group(1)} {m.group(2)}" if m else ""
+
+
 def _parsear_dia_por_dia(body: str, categoria: str, fuente: str) -> list[Promo]:
+    """Cubre las dos formas que usa la guía: grandes cadenas con el día en la frase
+    ("COTO: 25% de descuento los viernes, y 20% los sábados y domingos") y listas por
+    encabezado de día ("Lunes" / "Supermercado La Reina: 15% de descuento")."""
+    mes = _mes_de_url(fuente)
+    origen = f"guía de {mes}" if mes else "guía editorial"
     bloques = [b.strip() for b in re.split(r"\n{2,}", body) if b.strip()]
     dia_actual = None
     promos = []
     for b in bloques:
-        if b in DIAS_VALIDOS:
-            dia_actual = b
+        if b in DIAS_VALIDOS or b.startswith("Todos los días"):
+            dia_actual = "Todos los días" if b.startswith("Todos los días") else (_dias_en(b) or b)
             continue
-        if dia_actual is None:
-            continue
-        m = re.match(r"^([^:]+):\s*(\d+%\s*de descuento)\s*(.*?)\.", b, re.S)
+        m = re.match(r"^([^:]{1,60}):\s*(.+)$", b, re.S)
         if not m:
             continue
-        comercio, descuento, condicion = m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
-        promos.append(
-            Promo(
-                id=f"{comercio}:{dia_actual}:{descuento}",
-                banco="Mercado Pago",
-                categoria=categoria,
-                comercio=comercio,
-                dias=dia_actual,
-                descuento=descuento,
-                medio_pago=condicion,
-                fuente=fuente,
+        comercio, resto = m.group(1).strip(), m.group(2).strip()
+        coincidencias = list(re.finditer(r"(\d+)%\s*de descuento", resto))
+        for i, c in enumerate(coincidencias):
+            fin_trozo = coincidencias[i + 1].start() if i + 1 < len(coincidencias) else len(resto)
+            trozo = resto[c.end():fin_trozo]
+            dias = _dias_en(re.sub(r"\([^)]*\)", "", trozo)) or dia_actual
+            if not dias:
+                continue
+            nota = re.search(r"\(([^)]*)\)", trozo)
+            nota = nota.group(1).strip() if nota else ""
+            descuento = f"{c.group(1)}% de descuento"
+            promos.append(
+                Promo(
+                    id=f"{comercio}:{dias}:{descuento}",
+                    banco="Mercado Pago",
+                    categoria=categoria,
+                    comercio=comercio,
+                    dias=dias,
+                    descuento=descuento,
+                    medio_pago=f"Pagando con Mercado Pago ({origen})" + (f" · {nota}" if nota else ""),
+                    fuente=fuente,
+                    tope="sin tope" if "sin tope" in nota.lower() else "",
+                )
             )
-        )
     return promos
+
+
+def _parsear_combustible_prosa(body: str, fuente: str) -> list[Promo]:
+    """Nota mensual en prosa: "Todos los lunes ... 10% de descuento ... App YPF ... hasta $6.000 por semana"."""
+    marca = next((m for m in ("ypf", "shell", "axion", "puma") if m in fuente.lower()), None)
+    pct = re.search(r"(\d+)%", body)
+    dias = _dias_en(body.split("\n\n")[0])
+    if not (marca and pct and dias):
+        return []
+    tope_m = re.search(r"hasta \$\s?([\d.]+)\s*por\s*(semana|mes)", body, re.I)
+    tope = f"${tope_m.group(1)}/{'semanal' if tope_m.group(2).lower() == 'semana' else 'mensual'}" if tope_m else ""
+    mes = _mes_de_url(fuente)
+    nombre = marca.upper() if marca == "ypf" else marca.capitalize()
+    descuento = f"{pct.group(1)}% de descuento"
+    return [
+        Promo(
+            id=f"{nombre}:{dias}:{descuento}:mercadopago",
+            banco="Mercado Pago",
+            categoria="Combustible",
+            comercio=f"{nombre} — con tarjeta Mercado Pago",
+            dias=dias,
+            descuento=descuento,
+            medio_pago=f"QR desde la App {nombre}, con tarjeta de crédito o prepaga Mercado Pago" + (f" (nota de {mes})" if mes else ""),
+            fuente=fuente,
+            tope=tope,
+        )
+    ]
 
 
 def obtener_promos() -> list[Promo]:
@@ -123,7 +175,7 @@ def obtener_promos() -> list[Promo]:
     url_combustible = _link_mas_reciente(ARTICULO_COMBUSTIBLE_PATRON)
     if url_combustible:
         body = _articulo_body(url_combustible)
-        promos.extend(_parsear_dia_por_dia(body, "Combustible", url_combustible))
+        promos.extend(_parsear_combustible_prosa(body, url_combustible))
 
     return promos
 

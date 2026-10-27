@@ -9,6 +9,16 @@ from tabla import _con_link, _img, construir_tabla
 DOCS_DIR = Path("docs")
 
 
+def _seccion_alerta_fuentes(fuentes: list) -> str:
+    if not fuentes:
+        return ""
+    return (
+        '<div style="background:#fdecea;border:1px solid #f5c2c0;border-radius:8px;padding:10px 14px;margin:16px 0;font-size:14px;">'
+        f"⚠️ <b>No se pudo actualizar:</b> {', '.join(fuentes)}. Las promos de esas fuentes pueden faltar o estar desactualizadas."
+        "</div>"
+    )
+
+
 def _seccion_destacadas(nuevas: list) -> str:
     if not nuevas:
         return ""
@@ -66,8 +76,9 @@ def _seccion_mejor_opcion(promos: list, precios_combustible: dict) -> str:
     return f'<div style="display:flex;gap:12px;flex-wrap:wrap;margin:16px 0;">{"".join(bloques)}</div>'
 
 
-def generar_pagina(promos: list, nuevas: list = None, precios_combustible: dict = None):
+def generar_pagina(promos: list, nuevas: list = None, precios_combustible: dict = None, fuentes_con_problemas: list = None):
     nuevas = nuevas or []
+    fuentes_con_problemas = fuentes_con_problemas or []
     precios_combustible = precios_combustible or {}
     actualizado = datetime.now().strftime("%d/%m/%Y %H:%M")
     hoy = dia_de_hoy()
@@ -92,6 +103,7 @@ def generar_pagina(promos: list, nuevas: list = None, precios_combustible: dict 
 <body>
 <p style="font-size:14px;color:#888;margin-bottom:0;">Hoy es</p>
 <h1 style="margin-top:4px;">{hoy}</h1>
+{_seccion_alerta_fuentes(fuentes_con_problemas)}
 {_seccion_destacadas(nuevas)}
 {_seccion_mejor_opcion(promos, precios_combustible)}
 <h2>🛒 Todas las promos de la semana</h2>

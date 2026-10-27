@@ -12,15 +12,18 @@ Nota: se relevaron las 14 categorías/subcategorías del banco (1343 promos tota
 no ofrece ese tipo de promo actualmente. Si en el futuro agregan una categoría de
 combustible, sumarla a CATEGORIAS.
 """
+import re
 from dataclasses import asdict, dataclass
 
 import requests
 
+from dias import dias_en
+
 CATALOGO_URL = "https://loyalty.bff.bancogalicia.com.ar/api/portal/personalizacion/v1/promociones/catalogo"
-DETALLE_PROMO_URL = "https://loyalty.bff.bancogalicia.com.ar/api/portal/catalogo/v1/promociones/idPromocion/{id}"
+DETALLE_PROMO_URL = "https://loyalty.bff.bancogalicia.com.ar/api/portal/personalizacion/v1/promociones/idPromocion/{id}"
 CATEGORIAS = {8: "Supermercados"}  # id de categoría -> nombre; ver docstring
 IMG_BASE = "https://www.galicia.ar/content/dam/galicia/banco-galicia/personas/promociones/catalogo-de-beneficios/"
-DETALLE_URL_TPL = "https://beneficios.galicia.ar/promotions-catalog-filter/idcategoria={id_categoria}"
+DETALLE_URL_TPL = "https://beneficios.galicia.ar/promocion/{id}%7C{slug}%7Cmarca"  # el slug se ignora, vale el id
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -44,9 +47,20 @@ class Promo:
     detalle_url: str
 
 
+def _sin_html(texto: str) -> str:
+    return re.sub(r"<[^>]+>", "", texto or "").strip()
+
+
+def _nombre_medio(m) -> str:
+    """mediosDePago vino como [{"tarjeta": ...}] y ahora como ["TarjetaVisa.png"]."""
+    if isinstance(m, dict):
+        return m.get("tarjeta", "")
+    return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", m.rsplit(".", 1)[0])
+
+
 def _medios_de_pago_catalogo(item: dict) -> str:
     """Fallback si no se pudo traer el detalle: lista de tarjetas + QR genérico."""
-    tarjetas = [m["tarjeta"] for m in item.get("mediosDePago", [])]
+    tarjetas = [n for n in (_nombre_medio(m) for m in item.get("mediosDePago", [])) if n]
     if item.get("pagoQR"):
         tarjetas.append("QR")
     return ", ".join(tarjetas) if tarjetas else ""
@@ -62,7 +76,8 @@ def _fetch_detalle(id_promocion: int) -> dict:
 def _tope_legible(detalle: dict) -> str:
     tope = detalle.get("topeReintegro")
     if not tope:
-        return ""
+        leyenda = (detalle.get("leyendaTope") or "").lower()
+        return "sin tope" if "sin tope" in leyenda else ""
     periodicidad = (detalle.get("periodicidad") or "").lower()
     return f"${tope:,.0f}".replace(",", ".") + (f"/{periodicidad}" if periodicidad else "")
 
@@ -73,7 +88,7 @@ def _promos_de_categoria(id_categoria: int, nombre_categoria: str, page_size: in
     while True:
         r = requests.get(
             CATALOGO_URL,
-            params={"page": page, "pageSize": page_size, "IdCategoria": id_categoria},
+            params={"criterioDeOrden": "Cuotas", "idCategoria": id_categoria, "page": page, "pageSize": page_size},
             headers=HEADERS,
             timeout=15,
         )
@@ -89,7 +104,7 @@ def _promos_de_categoria(id_categoria: int, nombre_categoria: str, page_size: in
             except Exception:
                 detalle = {}
 
-            medio_pago = detalle.get("leyendaPaga") or _medios_de_pago_catalogo(it)
+            medio_pago = _sin_html(detalle.get("leyendaPaga")) or _medios_de_pago_catalogo(it)
             tope = _tope_legible(detalle)
 
             promos.append(
@@ -98,13 +113,13 @@ def _promos_de_categoria(id_categoria: int, nombre_categoria: str, page_size: in
                     banco="Galicia",
                     categoria=nombre_categoria,
                     comercio=it.get("titulo") or "",
-                    dias=it.get("leyendaDiasAplicacion") or "",
-                    descuento=it.get("promocion") or "",
+                    dias=dias_en(it.get("leyendaDiasAplicacion") or "") or (it.get("leyendaDiasAplicacion") or "").strip(),
+                    descuento=(it.get("promocion") or "").strip().rstrip("."),
                     medio_pago=medio_pago,
                     tope=tope,
                     vigencia_hasta=(it.get("fechaHasta") or "")[:10],
                     logo_url=f"{IMG_BASE}{imagen}" if imagen else "",
-                    detalle_url=DETALLE_URL_TPL.format(id_categoria=id_categoria),
+                    detalle_url=DETALLE_URL_TPL.format(id=it["id"], slug=re.sub(r"[^a-z0-9]+", "", (it.get("titulo") or "").lower())),
                 )
             )
         if len(items) < page_size:

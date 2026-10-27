@@ -35,7 +35,7 @@ def _img(src: str, size: int = 20) -> str:
 
 def construir_tabla(promos: list, destacadas_ids: set = None) -> str:
     destacadas_ids = destacadas_ids or set()
-    ordenadas = sorted(promos, key=lambda p: (orden_dia(p.dias), -_pct(p.descuento), p.banco))
+    ordenadas = sorted(promos, key=lambda p: (orden_dia(p.dias), p.dias, -_pct(p.descuento), p.banco))
 
     filas = []
     dia_anterior = None
@@ -47,7 +47,7 @@ def construir_tabla(promos: list, destacadas_ids: set = None) -> str:
             )
             dia_anterior = p.dias
         color = BANCO_COLOR.get(p.banco, "#666")
-        tope = f" (tope {p.tope})" if p.tope else ""
+        tope = (f" ({p.tope})" if p.tope == "sin tope" else f" (tope {p.tope})") if p.tope else ""
         es_nueva = p.id in destacadas_ids
         fondo = "background:#fff8e1;" if es_nueva else ""
         badge = ' <span title="Nueva esta semana">🆕</span>' if es_nueva else ""

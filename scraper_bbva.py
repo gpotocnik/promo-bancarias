@@ -1,20 +1,26 @@
 """
 Scraper de promociones de supermercados de BBVA Argentina.
-No requiere Playwright: su API pública expone el detalle de la campaña
-"Supermercados" (id 2474) con comercio, tope y medio de pago.
+No requiere Playwright: su API pública expone la campaña "Supermercados" (id 2474)
+y, por promo, un detalle (communication/{id}) con día, tope y compra mínima.
 
-Nota: se relevó el catálogo completo de BBVA (368 promos, 2026-07-02) y no hay
-ninguna de combustible/estaciones de servicio actualmente. BBVA tampoco expone
-"día de aplicación" para supermercados (diasPromo viene null = todos los días).
-Si en el futuro agregan una campaña de combustible, sumar su id a CAMPANIAS.
+El listado de la campaña NO trae los días ni la compra mínima (diasPromo viene null
+siempre) — eso está solo en el detalle, en beneficios[0].requisitos, por ejemplo:
+"En compras mayores a $100.000 con QR MODO. / Viernes y sábados." Antes se asumía que
+diasPromo=null significaba "todos los días", y era falso.
+
+Nota: BBVA no tiene promos de combustible propias en su catálogo de campañas.
 """
 import re
 from dataclasses import asdict, dataclass
 
 import requests
 
-CAMPAIGN_URL = "https://go.bbva.com.ar/willgo/fgo/API/v3/campaign/{id_campania}"
-CAMPANIAS = {"2474": "Supermercados"}  # id de campaña -> categoría; ver docstring
+from dias import dias_en
+
+BASE = "https://go.bbva.com.ar/willgo/fgo/API/v3"
+CAMPAIGN_URL = BASE + "/campaign/{id_campania}"
+COMUNICACION_URL = BASE + "/communication/{id}"
+CAMPANIAS = {"2474": "Supermercados"}  # id de campaña -> categoría
 DETALLE_URL_TPL = "https://www.bbva.com.ar/beneficios/campania.html?id={id_campania}"
 
 HEADERS = {
@@ -22,6 +28,8 @@ HEADERS = {
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
     "Accept": "application/json",
 }
+
+DIA_NO_INFORMADO = "Día no informado (ver bases)"
 
 
 @dataclass
@@ -39,54 +47,91 @@ class Promo:
     detalle_url: str
 
 
-def _comercio_y_medio_pago(cabecera: str, grupo_tarjeta: str) -> tuple[str, str]:
-    """'Supermercados Dia Beneficio exclusivo MODO' -> ('Supermercados Dia', 'MODO')."""
-    if "Beneficio exclusivo MODO" in cabecera:
-        return cabecera.replace("Beneficio exclusivo MODO", "").strip(), "MODO"
-    return cabecera.strip(), grupo_tarjeta
+def _limpiar_comercio(cabecera: str) -> str:
+    """'Jumbo QR Modo 20%' / 'Supermercados Dia Beneficio exclusivo MODO' -> 'Jumbo' / 'Supermercados Dia'."""
+    c = re.sub(r"\s*Beneficio exclusivo MODO", "", cabecera, flags=re.I)
+    c = re.sub(r"\s*QR\s*Modo(\s*\d+\s*%?)?", "", c, flags=re.I)
+    return c.strip()
+
+
+def _porcentaje(item: dict, detalle: dict) -> str:
+    for texto in (item.get("cabecera"), item.get("subcabecera"), detalle.get("cabecera")):
+        m = re.search(r"(\d+)\s*%", texto or "")
+        if m:
+            return m.group(1)
+    m = re.search(r"consta\s+de\s+(\d+)\s*%", detalle.get("basesCondiciones") or "", re.I)
+    return m.group(1) if m else ""
+
+
+def _tope(beneficio: dict, monto_listado) -> str:
+    tope = beneficio.get("tope") or monto_listado
+    if not tope:
+        return "sin tope" if beneficio.get("tipoTope") == "ninguno" else ""
+    texto = f"${int(tope):,}".replace(",", ".")
+    frecuencia = (beneficio.get("frecuenciaTope") or "").strip().lower()
+    if frecuencia == "por mes":
+        return texto + "/mensual"
+    return texto + (f"/{frecuencia.replace('por ', '')}" if frecuencia else "")
+
+
+def _detalle(id_promo: str) -> dict:
+    try:
+        r = requests.get(COMUNICACION_URL.format(id=id_promo), headers=HEADERS, timeout=15)
+        r.raise_for_status()
+        return r.json().get("data") or {}
+    except Exception:
+        return {}
+
+
+def _items_de_campania(id_campania: str) -> list[dict]:
+    """El parámetro `pager` no pagina realmente: hay que leer el total de páginas del mensaje."""
+    items, vistos = [], set()
+    pager = 0
+    while True:
+        r = requests.get(CAMPAIGN_URL.format(id_campania=id_campania), params={"pager": pager}, headers=HEADERS, timeout=15)
+        r.raise_for_status()
+        cuerpo = r.json()
+        for it in cuerpo.get("data", []):
+            if it["id"] not in vistos:
+                vistos.add(it["id"])
+                items.append(it)
+        m = re.search(r"paginas:\s*(\d+)", cuerpo.get("message", ""))
+        total_paginas = int(m.group(1)) if m else 1
+        pager += 1
+        if pager >= total_paginas or pager > 20:
+            return items
 
 
 def _promos_de_campania(id_campania: str, nombre_categoria: str) -> list[Promo]:
     promos = []
-    pager = 0
-    while True:
-        r = requests.get(
-            CAMPAIGN_URL.format(id_campania=id_campania),
-            params={"pager": pager},
-            headers=HEADERS,
-            timeout=15,
-        )
-        r.raise_for_status()
-        items = r.json().get("data", [])
-        if not items:
-            break
-        for it in items:
-            m = re.search(r"(\d+%[^.]*)", it.get("subcabecera") or "")
-            if not m:
-                continue  # entrada sin porcentaje publicado todavía (placeholder)
-            comercio, medio_pago = _comercio_y_medio_pago(it.get("cabecera", ""), it.get("grupoTarjeta", ""))
-            descuento = m.group(1).strip()
-            monto_tope = it.get("montoTope")
-            promos.append(
-                Promo(
-                    id=it["id"],
-                    banco="BBVA",
-                    categoria=nombre_categoria,
-                    comercio=comercio,
-                    dias=it.get("diasPromo") or "Todos los días",
-                    descuento=descuento,
-                    medio_pago=medio_pago,
-                    tope=f"${monto_tope}" if monto_tope else "",
-                    vigencia_hasta=it.get("fechaHasta") or "",
-                    logo_url=it.get("imagen") or "",
-                    detalle_url=DETALLE_URL_TPL.format(id_campania=id_campania),
-                )
+    for it in _items_de_campania(id_campania):
+        detalle = _detalle(it["id"])
+        beneficio = (detalle.get("beneficios") or [{}])[0]
+        requisitos = " / ".join(beneficio.get("requisitos") or [])
+
+        pct = _porcentaje(it, detalle)
+        if not pct:
+            continue  # sin porcentaje publicado todavía (placeholder)
+
+        tipo = "descuento en punto de venta" if "punto de venta" in requisitos.lower() else "reintegro"
+        minimo = re.search(r"mayores a\s*\$\s*([\d.]+)", requisitos, re.I)
+        medio_pago = "QR MODO desde la app BBVA" + (f", compra mínima ${minimo.group(1)}" if minimo else "")
+
+        promos.append(
+            Promo(
+                id=it["id"],
+                banco="BBVA",
+                categoria=nombre_categoria,
+                comercio=_limpiar_comercio(it.get("cabecera", "")),
+                dias=dias_en(requisitos) or DIA_NO_INFORMADO,
+                descuento=f"{pct}% de {tipo}",
+                medio_pago=medio_pago,
+                tope=_tope(beneficio, it.get("montoTope")),
+                vigencia_hasta=it.get("fechaHasta") or "",
+                logo_url=it.get("imagen") or "",
+                detalle_url=DETALLE_URL_TPL.format(id_campania=id_campania),
             )
-        if len(items) < 10:  # tamaño de página observado
-            break
-        pager += 1
-        if pager > 20:
-            break
+        )
     return promos
 
 
@@ -103,7 +148,7 @@ if __name__ == "__main__":
     promos = obtener_promos()
     print(f"{len(promos)} promos encontradas en BBVA\n")
     for p in promos:
-        print(f"- {p.comercio} — {p.descuento} | {p.medio_pago} | tope {p.tope or 'sin tope'} | hasta {p.vigencia_hasta}")
+        print(f"- [{p.dias}] {p.comercio} — {p.descuento} | {p.medio_pago} | tope {p.tope or 'sin dato'} | hasta {p.vigencia_hasta}")
 
     print("\n--- JSON ---")
     print(json.dumps([asdict(p) for p in promos], ensure_ascii=False, indent=2))

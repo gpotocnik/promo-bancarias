@@ -11,11 +11,12 @@ AIRES", usando los nombres de localidad tal como aparecen en el propio dataset.
 """
 import csv
 import io
+import time
 
 import requests
 
 CSV_URL = (
-    "http://datos.energia.gob.ar/dataset/1c181390-5045-475e-94dc-410429be4b17/"
+    "https://datos.energia.gob.ar/dataset/1c181390-5045-475e-94dc-410429be4b17/"
     "resource/80ac25de-a44a-4445-9215-090cf55cfda5/download/precios-en-surtidor-resolucin-3142016.csv"
 )
 
@@ -44,6 +45,21 @@ MARCA_NORMALIZADA = {
 }
 
 
+def _descargar_csv(intentos: int = 3):
+    """Desde los runners de GitHub el puerto 80 de datos.energia.gob.ar daba timeout:
+    se usa https y se reintenta."""
+    ultimo_error = None
+    for i in range(intentos):
+        try:
+            r = requests.get(CSV_URL, timeout=(15, 90))
+            r.raise_for_status()
+            return r
+        except requests.RequestException as e:
+            ultimo_error = e
+            time.sleep(3 * (i + 1))
+    raise ultimo_error
+
+
 def _en_zona(row: dict) -> bool:
     if row.get("provincia") == "CAPITAL FEDERAL":
         return True
@@ -54,8 +70,7 @@ def _en_zona(row: dict) -> bool:
 
 def obtener_precios_promedio(producto: str = PRODUCTO_DEFAULT) -> dict:
     """Devuelve {marca: precio_promedio} para el producto pedido, en CABA + GBA Norte."""
-    r = requests.get(CSV_URL, timeout=30)
-    r.raise_for_status()
+    r = _descargar_csv()
 
     sumas = {}
     conteos = {}

@@ -9,14 +9,14 @@ from calidad import filtrar_validas
 from dedup import cargar_vistos, guardar_vistos, separar_nuevas
 from generar_pagina import generar_pagina
 from precios_combustible import obtener_precios_promedio
-from unify import obtener_todas_las_promos
+from unify import obtener_todas_las_promos_con_estado
 from zona import filtrar_por_zona
 
 
 def main():
     print(f"[{datetime.now()}] corriendo monitor")
 
-    crudas = obtener_todas_las_promos()
+    crudas, fuentes_con_problemas = obtener_todas_las_promos_con_estado()
     print(f"  {len(crudas)} promos scrapeadas")
 
     validas = filtrar_validas(crudas)
@@ -32,8 +32,9 @@ def main():
     except Exception as e:
         print(f"[WARN] no se pudieron obtener precios de combustible: {e}")
         precios_combustible = {}
+        fuentes_con_problemas.append("Precios oficiales de combustible")
 
-    generar_pagina(promos, nuevas, precios_combustible)
+    generar_pagina(promos, nuevas, precios_combustible, fuentes_con_problemas)
     guardar_vistos(vistos_actualizado)
     print("  listo")
 

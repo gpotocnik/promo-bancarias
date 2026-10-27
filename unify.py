@@ -78,7 +78,7 @@ def _de_mercadopago() -> list[PromoUnificada]:
             dias=p.dias,
             descuento=p.descuento,
             medio_pago=p.medio_pago,
-            tope="",
+            tope=p.tope,
             vigencia="",
             logo_comercio=logo_comercio(p.comercio, ""),
             detalle_url=p.fuente,
@@ -125,8 +125,11 @@ def _de_beneficios_propios() -> list[PromoUnificada]:
     ]
 
 
-def obtener_todas_las_promos() -> list[PromoUnificada]:
+def obtener_todas_las_promos_con_estado() -> tuple[list[PromoUnificada], list[str]]:
+    """Devuelve (promos, fuentes_con_problemas). Una fuente que falla o no trae nada
+    queda registrada para avisarlo en la página, en vez de desaparecer en silencio."""
     promos = []
+    problemas = []
     fuentes = [
         (_de_galicia, "Galicia"),
         (_de_bbva, "BBVA"),
@@ -134,12 +137,22 @@ def obtener_todas_las_promos() -> list[PromoUnificada]:
         (_de_amex, "American Express"),
         (_de_beneficios_propios, "Beneficios propios (YPF/Shell)"),
     ]
-    for fn, banco in fuentes:
+    for fn, nombre in fuentes:
         try:
-            promos.extend(fn())
+            obtenidas = fn()
         except Exception as e:
-            print(f"[WARN] fallo scrapeando {banco}: {e}")
-    return promos
+            print(f"[WARN] fallo scrapeando {nombre}: {e}")
+            problemas.append(nombre)
+            continue
+        if not obtenidas:
+            print(f"[WARN] {nombre} no devolvió ninguna promo")
+            problemas.append(nombre)
+        promos.extend(obtenidas)
+    return promos, problemas
+
+
+def obtener_todas_las_promos() -> list[PromoUnificada]:
+    return obtener_todas_las_promos_con_estado()[0]
 
 
 def orden_dia(dias: str) -> int:
