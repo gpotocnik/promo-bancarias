@@ -9,9 +9,14 @@ Florida, Vicente López). CABA se identifica por provincia="CAPITAL FEDERAL"; GB
 no es una provincia aparte, así que se filtra por localidad dentro de provincia="BUENOS
 AIRES", usando los nombres de localidad tal como aparecen en el propio dataset.
 """
+from __future__ import annotations
+
 import csv
 import io
+import json
 import time
+from datetime import date
+from pathlib import Path
 
 import requests
 
@@ -19,6 +24,14 @@ CSV_URL = (
     "https://datos.energia.gob.ar/dataset/1c181390-5045-475e-94dc-410429be4b17/"
     "resource/80ac25de-a44a-4445-9215-090cf55cfda5/download/precios-en-surtidor-resolucin-3142016.csv"
 )
+
+# Espejo del mismo portal gubernamental (dominio anterior del ministerio).
+CSV_URLS = [CSV_URL, CSV_URL.replace("datos.energia.gob.ar", "datos.minem.gob.ar")]
+
+# El servidor oficial corta las conexiones desde las IPs de los runners de GitHub
+# (connect timeout, en HTTP y HTTPS). Cuando la descarga en vivo falla se usa esta foto
+# fechada, que se regenera sola cada vez que el script corre en una máquina con acceso.
+SNAPSHOT_PATH = Path(__file__).with_name("precios_combustible_snapshot.json")
 
 PRODUCTO_DEFAULT = "Nafta (súper) entre 92 y 95 Ron"
 
@@ -45,18 +58,17 @@ MARCA_NORMALIZADA = {
 }
 
 
-def _descargar_csv(intentos: int = 3):
-    """Desde los runners de GitHub el puerto 80 de datos.energia.gob.ar daba timeout:
-    se usa https y se reintenta."""
+def _descargar_csv(intentos_por_url: int = 2):
     ultimo_error = None
-    for i in range(intentos):
-        try:
-            r = requests.get(CSV_URL, timeout=(15, 90))
-            r.raise_for_status()
-            return r
-        except requests.RequestException as e:
-            ultimo_error = e
-            time.sleep(3 * (i + 1))
+    for url in CSV_URLS:
+        for i in range(intentos_por_url):
+            try:
+                r = requests.get(url, timeout=(10, 90))
+                r.raise_for_status()
+                return r
+            except requests.RequestException as e:
+                ultimo_error = e
+                time.sleep(2 * (i + 1))
     raise ultimo_error
 
 
@@ -68,13 +80,11 @@ def _en_zona(row: dict) -> bool:
     return False
 
 
-def obtener_precios_promedio(producto: str = PRODUCTO_DEFAULT) -> dict:
-    """Devuelve {marca: precio_promedio} para el producto pedido, en CABA + GBA Norte."""
-    r = _descargar_csv()
+def _promedios(contenido: bytes, producto: str) -> dict:
 
     sumas = {}
     conteos = {}
-    reader = csv.DictReader(io.StringIO(r.content.decode("utf-8-sig")))
+    reader = csv.DictReader(io.StringIO(contenido.decode("utf-8-sig")))
     for row in reader:
         if row.get("producto") != producto:
             continue
@@ -92,6 +102,33 @@ def obtener_precios_promedio(producto: str = PRODUCTO_DEFAULT) -> dict:
         conteos[marca] = conteos.get(marca, 0) + 1
 
     return {marca: sumas[marca] / conteos[marca] for marca in sumas}
+
+
+def obtener_precios_con_origen(producto: str = PRODUCTO_DEFAULT) -> tuple[dict, str | None]:
+    """Devuelve (precios, fecha_de_la_foto). fecha_de_la_foto es None si son datos en vivo;
+    si la fuente oficial no responde, se usa la última foto guardada y se informa su fecha."""
+    try:
+        precios = _promedios(_descargar_csv().content, producto)
+        if precios:
+            SNAPSHOT_PATH.write_text(
+                json.dumps({"fecha": date.today().isoformat(), "producto": producto, "precios": precios},
+                           ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            return precios, None
+    except Exception as e:
+        print(f"[WARN] fuente oficial de combustible no responde ({type(e).__name__}); se usa la última foto guardada")
+    if SNAPSHOT_PATH.exists():
+        foto = json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8"))
+        if foto.get("producto") == producto and foto.get("precios"):
+            d = date.fromisoformat(foto["fecha"])
+            return foto["precios"], d.strftime("%d/%m/%Y")
+    raise RuntimeError("sin precios de combustible: la fuente oficial no responde y no hay foto guardada")
+
+
+def obtener_precios_promedio(producto: str = PRODUCTO_DEFAULT) -> dict:
+    """Devuelve {marca: precio_promedio} para el producto pedido, en CABA + GBA Norte."""
+    return obtener_precios_con_origen(producto)[0]
 
 
 if __name__ == "__main__":

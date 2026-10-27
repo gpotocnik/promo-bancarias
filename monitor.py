@@ -8,7 +8,7 @@ from datetime import datetime
 from calidad import filtrar_validas
 from dedup import cargar_vistos, guardar_vistos, separar_nuevas
 from generar_pagina import generar_pagina
-from precios_combustible import obtener_precios_promedio
+from precios_combustible import obtener_precios_con_origen
 from unify import obtener_todas_las_promos_con_estado
 from zona import filtrar_por_zona
 
@@ -28,7 +28,9 @@ def main():
     print(f"  {len(nuevas)} promos nuevas desde la última corrida")
 
     try:
-        precios_combustible = obtener_precios_promedio()
+        precios_combustible, fecha_foto = obtener_precios_con_origen()
+        if fecha_foto:
+            fuentes_con_problemas.append(f"Precios oficiales de combustible (se usan los del {fecha_foto})")
     except Exception as e:
         print(f"[WARN] no se pudieron obtener precios de combustible: {e}")
         precios_combustible = {}

@@ -17,7 +17,11 @@ No manda mail — corrió esa versión pero se descartó a favor de una página 
 
 ## Cuando una fuente falla
 
-Si una fuente falla o no devuelve promos, la página muestra un aviso rojo arriba ("⚠️ No se pudo actualizar: …") en vez de quedar desactualizada en silencio. Incidente de referencia (oct 2026): Galicia cambió nombres de parámetros (`IdCategoria` → `idCategoria`, `criterioDeOrden`) y movió el endpoint de detalle (`catalogo/v1/promociones/idPromocion/{id}` → `personalizacion/v1/promociones/idPromocion/{id}`); BBVA movió el % al título y los días al detalle; Mercado Pago cambió los títulos de sus guías; el CSV de combustible dio timeout por HTTP desde los runners de GitHub (ahora HTTPS con reintentos).
+Si una fuente falla o no devuelve promos, la página muestra un aviso rojo arriba ("⚠️ No se pudo actualizar: …") en vez de quedar desactualizada en silencio. Incidente de referencia (oct 2026): Galicia cambió nombres de parámetros (`IdCategoria` → `idCategoria`, `criterioDeOrden`) y movió el endpoint de detalle (`catalogo/v1/promociones/idPromocion/{id}` → `personalizacion/v1/promociones/idPromocion/{id}`); BBVA movió el % al título y los días al detalle; Mercado Pago cambió los títulos de sus guías; el CSV de combustible dio timeout por HTTP desde los runners de GitHub (ahora HTTPS con reintentos y espejo).
+
+## Precios de combustible desde GitHub
+
+El servidor oficial (`datos.energia.gob.ar`) corta las conexiones desde las IPs de los runners de GitHub, así que en CI la descarga en vivo falla. `precios_combustible.py` intenta la fuente (y un espejo) y, si no responde, usa `precios_combustible_snapshot.json`, una foto fechada que se regenera sola cada vez que el script corre en una máquina con acceso (por ejemplo `python3 precios_combustible.py` en tu Mac) y que hay que commitear. Cuando se usa la foto, la página lo avisa con la fecha.
 
 ## Zona
 
